@@ -1,0 +1,1 @@
+cp PeriodDetect/config_sample.py PeriodDetect/config.py
