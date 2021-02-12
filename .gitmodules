@@ -1,0 +1,3 @@
+[submodule "MultiCsvFileReader"]
+	path = MultiCsvFileReader
+	url = ssh://git@172.22.37.77:8088/NBStockManagement/MultiCsvFileReader.git
