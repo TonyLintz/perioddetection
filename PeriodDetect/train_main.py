@@ -15,10 +15,12 @@ import concurrent.futures
 from datetime import datetime
 
 from config import *
+from log import Log
 from process import fill_value_job
 from calculate import calculate_overall_feature
 from ModelTraining import Period_modeltraining
 
+log = Log(__name__).getlog()
 
 def main_job(key, Have_cycle_source_data, if_training):
     value = Have_cycle_source_data.groupby(['source_ip']).get_group(key).copy()
@@ -59,11 +61,14 @@ if __name__ == "__main__":
     print (("SourceDataType is : " + SourceDataType)) 
     print (("if_to_current is : " + str(if_to_current))) 
     print (("if_training is : " + str(if_training))) 
-
-    start_time_2 = time.time()
-    Have_cycle_source_data = pd.read_csv(data_path + '{}___Have_cycle_source_data.csv'.format(SourceDataType))
     
+    start_time_2 = time.time()
+    log.info("Start: Read have cycle of server csv")
+    Have_cycle_source_data = pd.read_csv(data_path + '{}___Have_cycle_source_data.csv'.format(SourceDataType))
+    log.info("End: Read have cycle of server csv")
+
     #=============補值演算法==========#
+    log.info("Start: fill empty value and rescaling the data")
     All_SIP_Fill_Data = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=core_max) as executor:
         futures = [executor.submit(fill_value_job, value, mode, SourceDataType) for key,value in Have_cycle_source_data.groupby(['source_ip'])]
@@ -74,10 +79,13 @@ if __name__ == "__main__":
    
     if SourceDataType == 'total_sent_bytes':
         Have_cycle_source_data[SourceDataType] = pow(Have_cycle_source_data[SourceDataType], 1/3)
-        
-    #=============特徵製作 & 模型訓練==========#    
-    if if_training:
+    log.info("End: fill empty value and rescaling the data")    
 
+    #=============特徵製作 & 模型訓練==========#    
+    
+    if if_training:
+       
+        log.info("Start: Training Model and feature extraction")
         All_Model_InfoDict = {}
         All_SIP_FEATURE_DICT = {}
         All_SIP_BASIS_DICT = {}
@@ -87,7 +95,8 @@ if __name__ == "__main__":
                     All_Model_InfoDict.update(ResultGroup.result()[0])
                     All_SIP_FEATURE_DICT.update({f"{ResultGroup.result()[3]}": ResultGroup.result()[1]})
                     All_SIP_BASIS_DICT.update({f"{ResultGroup.result()[3]}": ResultGroup.result()[2]})
-       
+        log.info("End: Training Model and feature extraction")
+        
         #存取各Source IP model 資訊與特徵集
         with open(pickle_path + f"{model_name}.pkl", "wb") as file:
             pickle.dump(All_Model_InfoDict, file)
@@ -100,6 +109,7 @@ if __name__ == "__main__":
     
     else:
         
+        log.info("Start: Feature extraction")
         All_SIP_FEATURE_DICT = {}
         with concurrent.futures.ProcessPoolExecutor(max_workers=core_max) as executor:
             futures = [executor.submit(main_job, key, Have_cycle_source_data, if_training) for key in Have_cycle_source_data.groupby(['source_ip']).size().index.tolist()]
@@ -108,5 +118,6 @@ if __name__ == "__main__":
       
         with open(pickle_path + f"{feature_set_name}.pkl", "wb") as file:
             pickle.dump(All_SIP_FEATURE_DICT, file)
-
+        log.info("End: Feature extraction")
     print ("Process pool execution in " + str(time.time() - start_time_2), "seconds")
+    

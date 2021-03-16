@@ -115,6 +115,7 @@ cutoff_frequency = 0.03
 
 #using path
 data_path = os.path.join(project_path,'data/')
+log_path = os.path.join(project_path,'log/')
 pickle_path = os.path.join(project_path,'pickle/')
 major_plot_path = os.path.join(project_path,'{}_plot/'.format(SourceDataType))
 sub_plot_path = os.path.join(major_plot_path,'normal_and_abnormal_weekday_plot/')

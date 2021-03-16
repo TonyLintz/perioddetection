@@ -20,7 +20,7 @@ def plot_normal_abnormal_in_data(source_data,key,flag=True):
             source_data = source_data[~source_data['if_abnormal'].isna()]
             weekend_holiday_part = source_data[source_data['holiday_type'] == 'weekend-holiday']
             Non_weekend_holiday_part = source_data[source_data['holiday_type'] == 'Non-weekend-holiday']
-            fill_date = source_data[source_data['is_server'] == '0']
+            fill_date = source_data[source_data['valid_data'] == 0]
             
             normal_part = source_data[source_data['if_abnormal'] == 1]
             abnormal_part = source_data[source_data['if_abnormal'] == -1]
@@ -51,7 +51,7 @@ def plot_normal_abnormal_in_data(source_data,key,flag=True):
         pass
 
 
-def plot_normal_abnormal_period(Feature_df,source_data,key,flag=True):
+def plot_normal_abnormal_period(Feature_df, source_data, key, flag=True):
     if flag:
         creat_multi_path(os.path.join(sub_plot_path,f'{key}/normal_weekday/'))
         creat_multi_path(os.path.join(sub_plot_path,f'{key}/abnormal_weekday/'))
@@ -67,7 +67,7 @@ def plot_normal_abnormal_period(Feature_df,source_data,key,flag=True):
             aa = source_data[source_data['period'] == i]
             aa = aa.sort_values(by = ['weekdays'])
             holiday_df = aa[aa['holiday_type'] == 'Non-weekend-holiday']
-            empty_df = aa[aa['is_server'] == '0']
+            empty_df = aa[aa['valid_data'] == 0]
             
             plt.plot(aa['weekdays'],aa[SourceDataType])
             plt.scatter(holiday_df['weekdays'],holiday_df[SourceDataType],color= 'goldenrod',s=100,label='Non-weekend-holiday')
@@ -85,16 +85,21 @@ def plot_normal_abnormal_period(Feature_df,source_data,key,flag=True):
             
     
 
-def plot_feature_scatter(basis,predict,Train_and_test,key,flag=True):
+def plot_feature_scatter(basis, predict_ocsvm, Feature_df_ocsvm, key, flag=True):
     if flag:
         creat_multi_path(os.path.join(feature_scatter_path,f'{key}/'))
-        up_bound = max(Feature_df[(Feature_df['if_abnormal'] ==1) & (Feature_df['type'] =='Training')]['FFT_Amp'])
-        low_bound = min(Feature_df[(Feature_df['if_abnormal'] ==1) & (Feature_df['type'] =='Training')]['FFT_Amp'])
         plt.figure()
-        plt.scatter(np.arange(len(Feature_df)),Feature_df['FFT_Amp'] , c = predict)
-        plt.axvline(Feature_df.loc[Feature_df.type == 'Training'].iloc[-1].name, color='k',linestyle = '--')
-        plt.axhline(up_bound, color='m',linestyle = '--',label = 'up_bound')
-        plt.axhline(low_bound, color='m',linestyle = '--',label = 'low_bound')
+        plt.scatter(np.arange(len(Feature_df_ocsvm)),Feature_df_ocsvm['FFT_Amp'] , c = predict_ocsvm)
+        plt.axvline(Feature_df_ocsvm.loc[Feature_df_ocsvm.type == 'Training'].iloc[-1].name, color='k',linestyle = '--')
+
+        try:
+            up_bound = max(Feature_df_ocsvm[(Feature_df_ocsvm['if_abnormal'] ==1) & (Feature_df_ocsvm['type'] =='Training')]['FFT_Amp'])
+            low_bound = min(Feature_df_ocsvm[(Feature_df_ocsvm['if_abnormal'] ==1) & (Feature_df_ocsvm['type'] =='Training')]['FFT_Amp'])
+            plt.axhline(up_bound, color='m',linestyle = '--',label = 'up_bound')
+            plt.axhline(low_bound, color='m',linestyle = '--',label = 'low_bound')
+
+        except:
+            pass
 
         plt.ylabel('feature point')
         plt.xlabel('week')
@@ -105,7 +110,7 @@ def plot_feature_scatter(basis,predict,Train_and_test,key,flag=True):
         pass
     
     
-def plot_cycle_general(SourceDataType,weekend_median,key,flag=True):
+def plot_cycle_general(SourceDataType, weekend_median, key, flag=True):
     if flag:
         creat_multi_path(os.path.join(cycle_general_path,f'{key}/'))
         plt.figure()
@@ -119,5 +124,3 @@ def plot_cycle_general(SourceDataType,weekend_median,key,flag=True):
         plt.close()
     else:
         pass
-
-    

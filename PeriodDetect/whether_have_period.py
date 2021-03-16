@@ -52,12 +52,8 @@ def detect_have_period(TrainData1,SourceDataType):
                 N = len(value)
                 detect_period = mode
                 Need_have_peak_num = round(int(N / detect_period))
-
-                
                 mode_in_difflist = list(filter(lambda x: x == mode,np.diff(df_peakk['index'])))
-#                ratio = len(mode_in_difflist) / len(np.diff(df_peakk['index']))
-               
-#                if (abs(Need_have_peak_num - len(df_peakk)) < toleration) & (ratio > mode_ratio) & (len(mode_in_difflist) > critical_modenum):
+    
                 if (abs(Need_have_peak_num - len(df_peakk)) < toleration) & (df_peakk['peak'].median() > mode_ratio) & (len(mode_in_difflist) >= critical_modenum) :
 
                     flag = 1

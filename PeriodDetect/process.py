@@ -111,7 +111,7 @@ def fill_value_method(value, mode, weekend_median, SourceDataType, all_fill_0_we
     return All_period_df
 
 
-@timing()
+
 def fill_value_job(value, mode, SourceDataType):
     value = value.reset_index(drop=True)
     value.loc[value.valid_data == 0,SourceDataType] = np.nan

@@ -19,16 +19,17 @@ from datetime import datetime
 from matplotlib import pyplot as plt
 from DetrendMethod import detrend_with_lowpass
 from config import *
+from log import Log
 from calculate import *
 from ModelTraining import *
 from plot_function import *
 from Calculate_PR_Indicator import *
 
+log = Log(__name__).getlog()
 
-def plot_job(key, model, basis, predict, Feature_df, source_data, weekend_median):
+def plot_job(key, model, basis, predict, predict_ocsvm, Feature_df, Feature_df_ocsvm, source_data, weekend_median):
     #畫特徵分類圖        
-    Train_and_test = model.steps[0][1].transform(np.reshape(Feature_df.loc[:,'FFT_Amp'].values,(len(Feature_df.loc[:,'FFT_Amp'].values),1)))
-    plot_feature_scatter(basis,predict,Train_and_test,key, False)
+    plot_feature_scatter(basis, predict_ocsvm, Feature_df_ocsvm, key, False)
    
     #畫異常部分圖
     plot_normal_abnormal_in_data(source_data,key,False)
@@ -51,6 +52,8 @@ def main_job(key,Have_cycle_source_data, All_Model_InfoDict, All_SIP_FEATURE_DIC
         Predict = Modeling_predict(Feature_df.loc[:,'FFT_Amp'].values,model)
         Feature_df['if_abnormal'] = Predict
         Feature_df = transform_label(Feature_df)
+        Feature_df_ocsvm = Feature_df.copy()
+        predict_ocsvm = Feature_df_ocsvm['if_abnormal'].values
         Feature_df = Resurrection(Feature_df)
         predict = Feature_df['if_abnormal'].values
        
@@ -63,7 +66,7 @@ def main_job(key,Have_cycle_source_data, All_Model_InfoDict, All_SIP_FEATURE_DIC
         
         weekend_median = basis.groupby(['weekdays'],as_index=False)[SourceDataType].median()
         weekend_median = weekend_median.rename(columns = {SourceDataType:'median_of_cycle'})
-
+        
         if SourceDataType == 'total_sent_bytes':
             weekend_median['median_of_cycle'] = weekend_median['median_of_cycle'] / (1024*1024)
         else:
@@ -75,7 +78,7 @@ def main_job(key,Have_cycle_source_data, All_Model_InfoDict, All_SIP_FEATURE_DIC
         source_data = Period_calcu_PR_indicator(source_data)
         source_data = source_data.sort_values(by = ['ds'])
         #畫圖部分
-        plot_job(key, model, basis, predict, Feature_df, source_data, weekend_median)
+        plot_job(key, model, basis, predict, predict_ocsvm, Feature_df, Feature_df_ocsvm, source_data, weekend_median)
         
         return source_data
     
@@ -86,7 +89,8 @@ if __name__ == "__main__":
     print (("SourceDataType is : " + SourceDataType)) 
     print (("if_to_current is : " + str(if_to_current))) 
     print (("if_move_file is : " + str(if_move_file))) 
-
+    
+    log.info("Start: load Model and Feature and basis pickle")
     with open(pickle_path + f"{model_name}.pkl", 'rb') as f:
         All_Model_InfoDict = pickle.load(f)
     
@@ -95,24 +99,29 @@ if __name__ == "__main__":
     
     with open(pickle_path + f"{basis_set_name}.pkl", 'rb') as f:
         All_SIP_BASIS_DICT = pickle.load(f)
-    
+    log.info("End: load Model and Feature and basis pickle")
+        
+    log.info("Start: Read have cycle of server csv")
     Have_cycle_source_data = pd.read_csv(data_path + '{}___Have_cycle_source_data.csv'.format(SourceDataType))
+    log.info("End: Read have cycle of server csv")
     
-    
+    log.info("Start: Detect anomaly period")
     start_time_2 = time.time()
     All_result = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=core_max) as executor:
         futures = [executor.submit(main_job, key, Have_cycle_source_data, All_Model_InfoDict, All_SIP_FEATURE_DICT, All_SIP_BASIS_DICT) for key in Have_cycle_source_data.groupby(['source_ip']).size().index.tolist()]
         for Result in tqdm(concurrent.futures.as_completed(futures)):
                 All_result.append(Result.result())
-    
-    
+   
+    log.info("End: Detect anomaly period")
     #存取最終結果Table
     All_result_df = pd.concat(All_result)
     All_result_df.to_csv(data_path + 'period_{}_result_file.csv'.format(SourceDataType_Small_Name),index=False)
     print ("Process pool execution in " + str(time.time() - start_time_2), "seconds")
-
+    
+    log.info("Start: Move Result file to Production Server")
     if if_move_file:
         shutil.copy2(data_path + 'period_{}_result_file.csv'.format(SourceDataType_Small_Name),  share_result_path + 'period_{}_result_file.csv'.format(SourceDataType_Small_Name))
     else:
         pass
+    log.info("End: Move Result file to Production Server")
